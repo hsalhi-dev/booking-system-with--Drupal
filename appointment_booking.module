@@ -98,3 +98,40 @@ function appointment_booking_user_predelete(UserInterface $account): void {
     }
   }
 }
+
+/**
+ * Implements hook_mail().
+ */
+function appointment_booking_mail($key, &$message, $params) {
+  switch ($key) {
+    case 'appointment_confirmation_user':
+      $message['subject'] = 'Confirmation de votre rendez-vous';
+      $message['body'][] = $params['message'];
+      break;
+
+    case 'appointment_confirmation_adviser':
+      $message['subject'] = 'Nouveau rendez-vous assigné';
+      $message['body'][] = $params['message'];
+      break;
+
+    case 'appointment_update_user':
+      $message['subject'] = 'Modification de votre rendez-vous';
+      $message['body'][] = $params['message'];
+      break;
+
+    case 'appointment_update_adviser':
+      $message['subject'] = 'Rendez-vous modifié';
+      $message['body'][] = $params['message'];
+      break;
+
+    case 'appointment_cancel_user':
+      $message['subject'] = 'Annulation de votre rendez-vous';
+      $message['body'][] = $params['message'];
+      break;
+
+    case 'appointment_cancel_adviser':
+      $message['subject'] = 'Rendez-vous annulé';
+      $message['body'][] = $params['message'];
+      break;
+  }
+}

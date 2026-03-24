@@ -111,8 +111,9 @@ class AppointmentSubmitForm extends FormBase {
       '#type' => 'date',
       '#title' => $this->t('Choose date'),
       '#required' => TRUE,
+      '#min' => date('Y-m-d'),
       '#ajax' => [
-        'callback' => '::updateByAdviserOrDate',
+        'callback' => '::updateDynamicFields',
         'wrapper' => 'booking-dynamic-wrapper',
       ],
     ];
@@ -122,7 +123,7 @@ class AppointmentSubmitForm extends FormBase {
     if (!empty($selected_adviser) && !empty($selected_date)) {
       $slots = $this->appointmentManager->getAvailableSlots((int) $selected_adviser, $selected_date);
       foreach ($slots as $slot) {
-        $slot_options[$slot['value']] = $slot['label'];
+        $slot_options[$slot['value']] = date('H:i', strtotime($slot['value']));
       }
     }
 
@@ -215,7 +216,12 @@ class AppointmentSubmitForm extends FormBase {
       return;
     }
 
-    $label = $first_name . ' ' . $last_name . ' - ' . $slot;
+    $label = sprintf(
+      '%s %s - %s',
+      $first_name,
+      $last_name,
+      date('d/m H:i', strtotime($slot))
+    );
 
     $appointment = $this->entityTypeManager
       ->getStorage('appointment')
@@ -234,7 +240,52 @@ class AppointmentSubmitForm extends FormBase {
 
     $appointment->save();
 
-    $this->messenger()->addStatus($this->t('Appointment successfully booked.'));
+    $mailManager = \Drupal::service('plugin.manager.mail');
+
+    // Adviser entity.
+    $adviser_user = $this->entityTypeManager->getStorage('user')->load($adviser);
+    $adviser_email = $adviser_user?->getEmail();
+    $adviser_name = $adviser_user?->getDisplayName() ?? 'Conseiller';
+
+    // Email to client.
+    $mailManager->mail(
+      'appointment_booking',
+      'appointment_confirmation_user',
+      $email,
+      'fr',
+      [
+        'message' => sprintf(
+          "Bonjour %s %s,\n\nVotre rendez-vous est confirmé.\nType: %s\nAgence: %s\nConseiller: %s\nDate: %s\n",
+          $first_name,
+          $last_name,
+          $this->entityTypeManager->getStorage('taxonomy_term')->load($appointment_type)?->label() ?? '',
+          $this->entityTypeManager->getStorage('agency')->load($agency)?->label() ?? '',
+          $adviser_name,
+          date('d/m/Y H:i', strtotime($slot))
+        ),
+      ]
+    );
+
+    // Email to adviser.
+    if (!empty($adviser_email)) {
+      $mailManager->mail(
+        'appointment_booking',
+        'appointment_confirmation_adviser',
+        $adviser_email,
+        'fr',
+        [
+          'message' => sprintf(
+            "Bonjour %s,\n\nUn nouveau rendez-vous vous a été assigné.\nClient: %s %s\nEmail client: %s\nTéléphone: %s\nDate: %s\n",
+            $adviser_name,
+            $first_name,
+            $last_name,
+            $email,
+            $phone,
+            date('d/m/Y H:i', strtotime($slot))
+          ),
+        ]
+      );
+    }
     $form_state->setRedirectUrl(Url::fromRoute('<current>'));
   }
 

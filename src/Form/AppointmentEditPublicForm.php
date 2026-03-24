@@ -143,12 +143,12 @@ class AppointmentEditPublicForm extends FormBase {
       );
 
       foreach ($slots as $slot) {
-        $slot_options[$slot['value']] = $slot['label'];
+        $slot_options[$slot['value']] = date('H:i', strtotime($slot['value']));
       }
 
       // Ensure current slot is still present if it matches current adviser/date.
       if (substr($stored_datetime, 0, 10) === $selected_date && (int) $appointment_entity->get('field_adviser')->target_id === (int) $selected_adviser) {
-        $slot_options[$stored_datetime] = substr($stored_datetime, 11, 5);
+        $slot_options[$stored_datetime] = date('H:i', strtotime($stored_datetime));
         ksort($slot_options);
       }
     }
@@ -257,7 +257,12 @@ class AppointmentEditPublicForm extends FormBase {
       return;
     }
 
-    $label = $first_name . ' ' . $last_name . ' - ' . $slot;
+    $label = sprintf(
+      '%s %s - %s',
+      $first_name,
+      $last_name,
+      date('d/m H:i', strtotime($slot))
+    );
 
     $appointment->set('label', $label);
     $appointment->set('field_appointment_type', $appointment_type);
@@ -269,6 +274,50 @@ class AppointmentEditPublicForm extends FormBase {
     $appointment->set('field_phone', $phone);
     $appointment->set('field_email', $email);
     $appointment->save();
+
+    $mailManager = \Drupal::service('plugin.manager.mail');
+
+    $adviser_user = $this->entityTypeManager->getStorage('user')->load($adviser);
+    $adviser_email = $adviser_user?->getEmail();
+    $adviser_name = $adviser_user?->getDisplayName() ?? 'Conseiller';
+
+    // Email to client.
+    $mailManager->mail(
+      'appointment_booking',
+      'appointment_update_user',
+      $email,
+      'fr',
+      [
+        'message' => sprintf(
+          "Bonjour %s %s,\n\nVotre rendez-vous a été modifié.\nNouvelle date: %s\nNouveau conseiller: %s\n",
+          $first_name,
+          $last_name,
+          date('d/m/Y H:i', strtotime($slot)),
+          $adviser_name
+        ),
+      ]
+    );
+
+    // Email to adviser.
+    if (!empty($adviser_email)) {
+      $mailManager->mail(
+        'appointment_booking',
+        'appointment_update_adviser',
+        $adviser_email,
+        'fr',
+        [
+          'message' => sprintf(
+            "Bonjour %s,\n\nLe rendez-vous du client %s %s a été modifié.\nNouvelle date: %s\nEmail client: %s\nTéléphone: %s\n",
+            $adviser_name,
+            $first_name,
+            $last_name,
+            date('d/m/Y H:i', strtotime($slot)),
+            $email,
+            $phone
+          ),
+        ]
+      );
+    }
 
     $this->messenger()->addStatus($this->t('Appointment updated successfully.'));
     $form_state->setRedirectUrl(Url::fromRoute('appointment_booking.lookup'));

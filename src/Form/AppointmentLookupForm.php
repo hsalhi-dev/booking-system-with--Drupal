@@ -92,6 +92,7 @@ class AppointmentLookupForm extends FormBase {
 
     $ids = $storage->getQuery()
       ->condition('field_email', $email)
+      ->condition('field_status.value', 'scheduled')
       ->accessCheck(FALSE)
       ->execute();
 
@@ -111,7 +112,63 @@ class AppointmentLookupForm extends FormBase {
       ->load($appointment_id);
 
     if ($appointment) {
-      $appointment->delete();
+      $email = $appointment->get('field_email')->value;
+      $first_name = $appointment->get('field_first_name')->value;
+      $last_name = $appointment->get('field_last_name')->value;
+      $slot = $appointment->get('field_appointment_date')->value;
+
+      $appointment->set('field_status', 'cancelled');
+      $appointment->save();
+
+      $mailManager = \Drupal::service('plugin.manager.mail');
+
+      $email = $appointment->get('field_email')->value;
+      $first_name = $appointment->get('field_first_name')->value;
+      $last_name = $appointment->get('field_last_name')->value;
+      $phone = $appointment->get('field_phone')->value;
+      $slot = $appointment->get('field_appointment_date')->value;
+
+      $adviser_id = $appointment->get('field_adviser')->target_id;
+      $adviser_user = $this->entityTypeManager->getStorage('user')->load($adviser_id);
+      $adviser_email = $adviser_user?->getEmail();
+      $adviser_name = $adviser_user?->getDisplayName() ?? 'Conseiller';
+
+      // Email to client.
+      $mailManager->mail(
+        'appointment_booking',
+        'appointment_cancel_user',
+        $email,
+        'fr',
+        [
+          'message' => sprintf(
+            "Bonjour %s %s,\n\nVotre rendez-vous du %s a été annulé.\n",
+            $first_name,
+            $last_name,
+            date('d/m/Y H:i', strtotime($slot))
+          ),
+        ]
+      );
+
+      // Email to adviser.
+      if (!empty($adviser_email)) {
+        $mailManager->mail(
+          'appointment_booking',
+          'appointment_cancel_adviser',
+          $adviser_email,
+          'fr',
+          [
+            'message' => sprintf(
+              "Bonjour %s,\n\nLe rendez-vous du client %s %s prévu le %s a été annulé.\nEmail client: %s\nTéléphone: %s\n",
+              $adviser_name,
+              $first_name,
+              $last_name,
+              date('d/m/Y H:i', strtotime($slot)),
+              $email,
+              $phone
+            ),
+          ]
+        );
+      }
       $this->messenger()->addStatus('Appointment cancelled.');
     }
 

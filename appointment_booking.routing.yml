@@ -38,3 +38,11 @@ appointment_booking.edit_public:
     _title: 'Modifier mon rendez-vous'
   requirements:
     _access: 'TRUE'
+
+appointment_booking.export_csv:
+  path: '/admin/content/appointments-admin/export-csv'
+  defaults:
+    _controller: '\Drupal\appointment_booking\Controller\AppointmentExportController::exportCsv'
+    _title: 'Export appointments CSV'
+  requirements:
+    _permission: 'access administration pages'
