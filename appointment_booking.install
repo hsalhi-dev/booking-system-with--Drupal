@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * @file
+ * Install and update hooks for appointment_booking.
+ */
+
+/**
+ * Installs missing entity definitions for existing sites.
+ */
+function appointment_booking_update_9001(): void {
+  $manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type_manager = \Drupal::entityTypeManager();
+
+  foreach (['agency', 'appointment'] as $entity_type_id) {
+    $changes = $manager->getChangeList();
+
+    if (isset($changes[$entity_type_id]['entity_type']) || !\Drupal::database()->schema()->tableExists($entity_type_id)) {
+      $entity_type = $entity_type_manager->getDefinition($entity_type_id);
+      $manager->installEntityType($entity_type);
+    }
+  }
+}

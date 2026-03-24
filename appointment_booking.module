@@ -1,0 +1,100 @@
+<?php
+
+use Drupal\Core\Render\Element;
+use Drupal\user\UserInterface;
+
+/**
+ * Implements hook_theme().
+ */
+function appointment_booking_theme(): array {
+  return [
+    'agency' => ['render element' => 'elements'],
+    'appointment' => ['render element' => 'elements'],
+  ];
+}
+
+/**
+ * Prepares variables for agency templates.
+ *
+ * Default template: agency.html.twig.
+ *
+ * @param array $variables
+ *   Variables for the template.
+ */
+function template_preprocess_agency(array &$variables): void {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+/**
+ * Prepares variables for appointment templates.
+ *
+ * Default template: appointment.html.twig.
+ *
+ * @param array $variables
+ *   Variables for the template.
+ */
+function template_preprocess_appointment(array &$variables): void {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+/**
+ * Implements hook_user_cancel().
+ */
+function appointment_booking_user_cancel($edit, UserInterface $account, $method): void {
+  $entity_types = ['agency', 'appointment'];
+
+  foreach ($entity_types as $entity_type) {
+    $storage = \Drupal::entityTypeManager()->getStorage($entity_type);
+
+    switch ($method) {
+      case 'user_cancel_block_unpublish':
+        $entity_ids = $storage->getQuery()
+          ->condition('uid', $account->id())
+          ->condition('status', 1)
+          ->accessCheck(FALSE)
+          ->execute();
+
+        foreach ($storage->loadMultiple($entity_ids) as $entity) {
+          $entity->set('status', FALSE)->save();
+        }
+        break;
+
+      case 'user_cancel_reassign':
+        $entity_ids = $storage->getQuery()
+          ->condition('uid', $account->id())
+          ->accessCheck(FALSE)
+          ->execute();
+
+        foreach ($storage->loadMultiple($entity_ids) as $entity) {
+          $entity->setOwnerId(0)->save();
+        }
+        break;
+    }
+  }
+}
+
+/**
+ * Implements hook_user_predelete().
+ */
+function appointment_booking_user_predelete(UserInterface $account): void {
+  $entity_types = ['agency', 'appointment'];
+
+  foreach ($entity_types as $entity_type) {
+    $storage = \Drupal::entityTypeManager()->getStorage($entity_type);
+    $entity_ids = $storage->getQuery()
+      ->condition('uid', $account->id())
+      ->accessCheck(FALSE)
+      ->execute();
+
+    $entities = $storage->loadMultiple($entity_ids);
+    if (!empty($entities)) {
+      $storage->delete($entities);
+    }
+  }
+}

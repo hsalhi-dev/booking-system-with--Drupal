@@ -1,0 +1,4 @@
+services:
+  appointment_booking.appointment_manager:
+    class: Drupal\appointment_booking\Service\AppointmentManager
+    arguments: ['@entity_type.manager']

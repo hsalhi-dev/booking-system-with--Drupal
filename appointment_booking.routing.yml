@@ -1,0 +1,40 @@
+
+entity.agency.settings:
+  path: 'admin/structure/agency'
+  defaults:
+    _form: '\Drupal\appointment_booking\Form\AgencySettingsForm'
+    _title: 'Agency'
+  requirements:
+    _permission: 'administer agency'
+
+entity.appointment.settings:
+  path: 'admin/structure/appointment'
+  defaults:
+    _form: '\Drupal\appointment_booking\Form\AppointmentSettingsForm'
+    _title: 'Appointment'
+  requirements:
+    _permission: 'administer appointment'
+
+appointment_booking.book:
+  path: '/prendre-un-rendez-vous'
+  defaults:
+    _form: '\Drupal\appointment_booking\Form\AppointmentSubmitForm'
+    _title: 'Prendre un rendez-vous'
+  requirements:
+    _access: 'TRUE'
+
+appointment_booking.lookup:
+  path: '/mes-rendez-vous'
+  defaults:
+    _form: '\Drupal\appointment_booking\Form\AppointmentLookupForm'
+    _title: 'Mes rendez-vous'
+  requirements:
+    _access: 'TRUE'
+
+appointment_booking.edit_public:
+  path: '/rendez-vous/{appointment}/modifier'
+  defaults:
+    _form: '\Drupal\appointment_booking\Form\AppointmentEditPublicForm'
+    _title: 'Modifier mon rendez-vous'
+  requirements:
+    _access: 'TRUE'
