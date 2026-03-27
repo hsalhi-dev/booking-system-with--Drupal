@@ -21,3 +21,17 @@ entity.appointment.collection:
   description: 'List of appointments.'
   route_name: entity.appointment.collection
   parent: system.admin_content
+
+appointment_booking.book_link:
+  title: 'Prendre un rendez-vous'
+  description: 'Réserver un rendez-vous'
+  route_name: appointment_booking.book
+  menu_name: main
+  weight: 10
+
+appointment_booking.lookup_link:
+  title: 'Mes rendez-vous'
+  description: 'Consulter mes rendez-vous'
+  route_name: appointment_booking.lookup
+  menu_name: main
+  weight: 11
